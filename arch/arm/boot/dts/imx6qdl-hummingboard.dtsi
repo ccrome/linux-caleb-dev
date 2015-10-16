@@ -88,7 +88,7 @@
 	};
 
 	sound-sgtl5000 {
-		audio-codec = <&sgtl5000>;
+		audio-codec = <&cs53l30_a>;
 		audio-routing =
 			"MIC_IN", "Mic Jack",
 			"Mic Jack", "Mic Bias",
@@ -100,13 +100,13 @@
 		ssi-controller = <&ssi1>;
 	};
 
-	sound-spdif {
-		compatible = "fsl,imx-audio-spdif";
-		model = "On-board SPDIF";
-		/* IMX6 doesn't implement this yet */
-		spdif-controller = <&spdif>;
-		spdif-out;
-	};
+//	sound-spdif {
+//		compatible = "fsl,imx-audio-spdif";
+//		model = "On-board SPDIF";
+//		/* IMX6 doesn't implement this yet */
+//		spdif-controller = <&spdif>;
+//		spdif-out;
+//	};
 };
 
 &audmux {
@@ -138,15 +138,27 @@
 	};
 
 	/* Pro baseboard model */
-	sgtl5000: sgtl5000@0a {
-		clocks = <&clks IMX6QDL_CLK_CKO>;
-		compatible = "fsl,sgtl5000";
+//	sgtl5000: sgtl5000@0a {
+//		clocks = <&clks IMX6QDL_CLK_CKO>;
+//		compatible = "fsl,sgtl5000";
+//		pinctrl-names = "default";
+//		pinctrl-0 = <&pinctrl_hummingboard_sgtl5000>;
+//		reg = <0x0a>;
+//		VDDA-supply = <&reg_3p3v>;
+//		VDDIO-supply = <&reg_3p3v>;
+//	};
+
+	cs53l30_a: cs53l30_a@48 {
+		compatible = "ci,cs53l30";
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_hummingboard_sgtl5000>;
-		reg = <0x0a>;
-		VDDA-supply = <&reg_3p3v>;
-		VDDIO-supply = <&reg_3p3v>;
+		reg=<0x48>;
+		status="okay";
+		clken-gpio  = <&gpio3 3 0>;
+		i2c-en-gpio = <&gpio3 6 0>;
+		reset-gpio  = <&gpio3 7 0>;
 	};
+
 };
 
 &i2c2 {
@@ -201,13 +213,22 @@
 			fsl,pins = <MX6QDL_PAD_DISP0_DAT8__PWM1_OUT 0x1b0b1>;
 		};
 
+//		puck_pins: puck_pins {
+//			fsl,pins = <
+//				MX6QDL_PAD_EIM_DA3__GPIO3_IO03 0x1e0b0     // mclk_enable, ball K24
+//				MX6QDL_PAD_EIM_DA6__GPIO3_IO06 0x1e0b0     // i2c_codec_enable, ball (K25)
+//				>;
+//		};
 		pinctrl_hummingboard_sgtl5000: hummingboard-sgtl5000 {
 			fsl,pins = <
-				MX6QDL_PAD_DISP0_DAT19__AUD5_RXD 0x130b0
-				MX6QDL_PAD_KEY_COL0__AUD5_TXC 0x130b0
-				MX6QDL_PAD_KEY_ROW0__AUD5_TXD 0x110b0
-				MX6QDL_PAD_KEY_COL1__AUD5_TXFS 0x130b0
-				MX6QDL_PAD_GPIO_5__CCM_CLKO1 0x130b0
+				MX6QDL_PAD_DISP0_DAT19__AUD5_RXD 0x130b0   // RXD (codec->mx6)
+				MX6QDL_PAD_KEY_COL0__AUD5_TXC 0x130b0      // BCLK (codec->mx6)
+				MX6QDL_PAD_KEY_ROW0__AUD5_TXD 0x110b0      // TXD (mx6->codec)
+				MX6QDL_PAD_KEY_COL1__AUD5_TXFS 0x130b0     // TXFS (codec->mx6)
+				MX6QDL_PAD_GPIO_5__CCM_CLKO1 0x130b0       // unused on puck
+				MX6QDL_PAD_EIM_DA3__GPIO3_IO03 0x1e0b0     // mclk_enable, ball K24
+				MX6QDL_PAD_EIM_DA6__GPIO3_IO06 0x1e0b0     // i2c_codec_enable, ball (K25)
+				MX6QDL_PAD_EIM_DA7__GPIO3_IO07 0x1e0b0     // codec-reset
 			>;
 		};
 

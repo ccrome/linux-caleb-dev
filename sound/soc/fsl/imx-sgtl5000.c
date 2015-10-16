@@ -27,22 +27,13 @@ struct imx_sgtl5000_data {
 	struct snd_soc_card card;
 	char codec_dai_name[DAI_NAME_SIZE];
 	char platform_name[DAI_NAME_SIZE];
-	struct clk *codec_clk;
-	unsigned int clk_frequency;
 };
 
 static int imx_sgtl5000_dai_init(struct snd_soc_pcm_runtime *rtd)
 {
-	struct imx_sgtl5000_data *data = snd_soc_card_get_drvdata(rtd->card);
-	struct device *dev = rtd->card->dev;
-	int ret;
-
-	ret = snd_soc_dai_set_sysclk(rtd->codec_dai, SGTL5000_SYSCLK,
-				     data->clk_frequency, SND_SOC_CLOCK_IN);
-	if (ret) {
-		dev_err(dev, "could not set codec driver clock params\n");
-		return ret;
-	}
+	//struct imx_sgtl5000_data *data = snd_soc_card_get_drvdata(rtd->card);
+	//struct device *dev = rtd->card->dev;
+	//int ret;
 
 	return 0;
 }
@@ -64,7 +55,7 @@ static int imx_sgtl5000_probe(struct platform_device *pdev)
 	struct imx_sgtl5000_data *data = NULL;
 	int int_port, ext_port;
 	int ret;
-
+	printk(KERN_INFO "*** %s\n", __func__);
 	ret = of_property_read_u32(np, "mux-int-port", &int_port);
 	if (ret) {
 		dev_err(&pdev->dev, "mux-int-port missing or invalid\n");
@@ -75,6 +66,7 @@ static int imx_sgtl5000_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "mux-ext-port missing or invalid\n");
 		return ret;
 	}
+	printk(KERN_INFO "*** %s 1\n", __func__);
 
 	/*
 	 * The port numbering in the hardware manual starts at 1, while
@@ -93,6 +85,7 @@ static int imx_sgtl5000_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "audmux internal port setup failed\n");
 		return ret;
 	}
+	printk(KERN_INFO "*** %s 2\n", __func__);
 	ret = imx_audmux_v2_configure_port(ext_port,
 			IMX_AUDMUX_V2_PTCR_SYN,
 			IMX_AUDMUX_V2_PDCR_RXDSEL(int_port));
@@ -109,6 +102,7 @@ static int imx_sgtl5000_probe(struct platform_device *pdev)
 		goto fail;
 	}
 
+	printk(KERN_INFO "*** %s 3\n", __func__);
 	ssi_pdev = of_find_device_by_node(ssi_np);
 	if (!ssi_pdev) {
 		dev_err(&pdev->dev, "failed to find SSI platform device\n");
@@ -127,31 +121,27 @@ static int imx_sgtl5000_probe(struct platform_device *pdev)
 		goto fail;
 	}
 
-	data->codec_clk = clk_get(&codec_dev->dev, NULL);
-	if (IS_ERR(data->codec_clk)) {
-		ret = PTR_ERR(data->codec_clk);
-		goto fail;
-	}
-
-	data->clk_frequency = clk_get_rate(data->codec_clk);
+	printk(KERN_INFO "*** %s 5\n", __func__);
 
 	data->dai.name = "HiFi";
 	data->dai.stream_name = "HiFi";
-	data->dai.codec_dai_name = "sgtl5000";
+	data->dai.codec_dai_name = "cs53l30-hifi";
 	data->dai.codec_of_node = codec_np;
 	data->dai.cpu_of_node = ssi_np;
 	data->dai.platform_of_node = ssi_np;
 	data->dai.init = &imx_sgtl5000_dai_init;
-	data->dai.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
+	data->dai.dai_fmt = SND_SOC_DAIFMT_DSP_A | SND_SOC_DAIFMT_NB_NF |
 			    SND_SOC_DAIFMT_CBM_CFM;
 
 	data->card.dev = &pdev->dev;
 	ret = snd_soc_of_parse_card_name(&data->card, "model");
 	if (ret)
 		goto fail;
+	printk(KERN_INFO "*** %s 6\n", __func__);
 	ret = snd_soc_of_parse_audio_routing(&data->card, "audio-routing");
 	if (ret)
 		goto fail;
+	printk(KERN_INFO "*** %s 7\n", __func__);
 	data->card.num_links = 1;
 	data->card.owner = THIS_MODULE;
 	data->card.dai_link = &data->dai;
@@ -160,6 +150,7 @@ static int imx_sgtl5000_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, &data->card);
 	snd_soc_card_set_drvdata(&data->card, data);
+	printk(KERN_INFO "*** %s 8\n", __func__);
 
 	ret = devm_snd_soc_register_card(&pdev->dev, &data->card);
 	if (ret) {
@@ -170,11 +161,10 @@ static int imx_sgtl5000_probe(struct platform_device *pdev)
 	of_node_put(ssi_np);
 	of_node_put(codec_np);
 
+	printk(KERN_INFO "*** %s 9\n", __func__);
 	return 0;
 
 fail:
-	if (data && !IS_ERR(data->codec_clk))
-		clk_put(data->codec_clk);
 	of_node_put(ssi_np);
 	of_node_put(codec_np);
 
@@ -183,11 +173,8 @@ fail:
 
 static int imx_sgtl5000_remove(struct platform_device *pdev)
 {
-	struct snd_soc_card *card = platform_get_drvdata(pdev);
-	struct imx_sgtl5000_data *data = snd_soc_card_get_drvdata(card);
-
-	clk_put(data->codec_clk);
-
+	//struct snd_soc_card *card = platform_get_drvdata(pdev);
+	//struct imx_sgtl5000_data *data = snd_soc_card_get_drvdata(card);
 	return 0;
 }
 

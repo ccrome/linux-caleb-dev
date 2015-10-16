@@ -707,7 +707,7 @@ static int fsl_ssi_hw_params(struct snd_pcm_substream *substream,
 	int ret;
 	u32 scr_val;
 	int enabled;
-
+	printk(KERN_INFO "*** %s, channels = %d\n", __func__, channels);
 	regmap_read(regs, CCSR_SSI_SCR, &scr_val);
 	enabled = scr_val & CCSR_SSI_SCR_SSIEN;
 
@@ -749,7 +749,10 @@ static int fsl_ssi_hw_params(struct snd_pcm_substream *substream,
 				CCSR_SSI_SCR_NET | CCSR_SSI_SCR_I2S_MODE_MASK,
 				channels == 1 ? 0 : i2smode);
 	}
-
+	ssi_private->i2s_mode = CCSR_SSI_SCR_I2S_MODE_NORMAL | CCSR_SSI_SCR_NET;
+	regmap_update_bits(regs, CCSR_SSI_SCR,
+			   CCSR_SSI_SCR_NET | CCSR_SSI_SCR_I2S_MODE_MASK,
+			   ssi_private->i2s_mode);
 	/*
 	 * FIXME: The documentation says that SxCCR[WL] should not be
 	 * modified while the SSI is enabled.  The only time this can
@@ -795,7 +798,7 @@ static int _fsl_ssi_set_dai_fmt(struct device *dev,
 	struct regmap *regs = ssi_private->regs;
 	u32 strcr = 0, stcr, srcr, scr, mask;
 	u8 wm;
-
+	printk(KERN_INFO "*** %s\n", __func__);
 	ssi_private->dai_fmt = fmt;
 
 	if (fsl_ssi_is_i2s_master(ssi_private) && IS_ERR(ssi_private->baudclk)) {
@@ -863,6 +866,15 @@ static int _fsl_ssi_set_dai_fmt(struct device *dev,
 		return -EINVAL;
 	}
 	scr |= ssi_private->i2s_mode;
+	// Set to 16 slots/frame
+	regmap_update_bits(regs, CCSR_SSI_STCCR,
+			   CCSR_SSI_SxCCR_DC_MASK,
+			   CCSR_SSI_SxCCR_DC(16));
+	
+	regmap_update_bits(regs, CCSR_SSI_SRCCR,
+			   CCSR_SSI_SxCCR_DC_MASK,
+			   CCSR_SSI_SxCCR_DC(16));
+	
 
 	/* DAI clock inversion */
 	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
@@ -951,6 +963,7 @@ static int _fsl_ssi_set_dai_fmt(struct device *dev,
 	if ((fmt & SND_SOC_DAIFMT_FORMAT_MASK) == SND_SOC_DAIFMT_AC97)
 		fsl_ssi_setup_ac97(ssi_private);
 
+	printk(KERN_INFO "***--- %s\n", __func__);
 	return 0;
 
 }
@@ -1058,11 +1071,13 @@ static int fsl_ssi_trigger(struct snd_pcm_substream *substream, int cmd,
 static int fsl_ssi_dai_probe(struct snd_soc_dai *dai)
 {
 	struct fsl_ssi_private *ssi_private = snd_soc_dai_get_drvdata(dai);
+	printk(KERN_INFO "*** %s\n", __func__);
 
 	if (ssi_private->soc->imx && ssi_private->use_dma) {
 		dai->playback_dma_data = &ssi_private->dma_params_tx;
 		dai->capture_dma_data = &ssi_private->dma_params_rx;
 	}
+	printk(KERN_INFO "***--- %s\n", __func__);
 
 	return 0;
 }
@@ -1084,14 +1099,14 @@ static struct snd_soc_dai_driver fsl_ssi_dai_template = {
 	.playback = {
 		.stream_name = "CPU-Playback",
 		.channels_min = 1,
-		.channels_max = 2,
+		.channels_max = 16,
 		.rates = FSLSSI_I2S_RATES,
 		.formats = FSLSSI_I2S_FORMATS,
 	},
 	.capture = {
 		.stream_name = "CPU-Capture",
 		.channels_min = 1,
-		.channels_max = 2,
+		.channels_max = 16,
 		.rates = FSLSSI_I2S_RATES,
 		.formats = FSLSSI_I2S_FORMATS,
 	},
@@ -1386,7 +1401,7 @@ static int fsl_ssi_probe(struct platform_device *pdev)
 	if (!of_find_property(np, "fsl,ssi-asynchronous", NULL)) {
 		if (!fsl_ssi_is_ac97(ssi_private))
 			ssi_private->cpu_dai_drv.symmetric_rates = 1;
-
+		printk(KERN_INFO "*** %s, symmetric_channels & samplebits\n", __func__);
 		ssi_private->cpu_dai_drv.symmetric_channels = 1;
 		ssi_private->cpu_dai_drv.symmetric_samplebits = 1;
 	}
