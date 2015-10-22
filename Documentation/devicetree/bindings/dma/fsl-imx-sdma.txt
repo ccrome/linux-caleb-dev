@@ -57,6 +57,7 @@ The third cell specifies the transfer priority as below.
 	0	High
 	1	Medium
 	2	Low
+	10      Extra High
 
 Examples:
 

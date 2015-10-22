@@ -1077,6 +1077,9 @@ static int sdma_alloc_chan_resources(struct dma_chan *chan)
 		return -EINVAL;
 
 	switch (data->priority) {
+	case DMA_PRIO_RT:
+		prio = 7;
+		break;
 	case DMA_PRIO_HIGH:
 		prio = 3;
 		break;

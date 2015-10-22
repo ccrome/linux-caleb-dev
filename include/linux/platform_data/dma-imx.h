@@ -47,7 +47,8 @@ enum sdma_peripheral_type {
 enum imx_dma_prio {
 	DMA_PRIO_HIGH = 0,
 	DMA_PRIO_MEDIUM = 1,
-	DMA_PRIO_LOW = 2
+	DMA_PRIO_LOW = 2,
+	DMA_PRIO_RT = 10
 };
 
 struct imx_dma_data {
