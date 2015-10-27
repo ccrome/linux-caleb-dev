@@ -54,6 +54,9 @@
 #include "fsl_ssi.h"
 #include "imx-pcm.h"
 
+
+#define FSL_SSI_WATERMARK 8
+
 /**
  * FSLSSI_I2S_RATES: sample rates supported by the I2S
  *
@@ -707,7 +710,6 @@ static int fsl_ssi_hw_params(struct snd_pcm_substream *substream,
 	int ret;
 	u32 scr_val;
 	int enabled;
-	printk(KERN_INFO "*** %s, channels = %d\n", __func__, channels);
 	regmap_read(regs, CCSR_SSI_SCR, &scr_val);
 	enabled = scr_val & CCSR_SSI_SCR_SSIEN;
 
@@ -798,7 +800,6 @@ static int _fsl_ssi_set_dai_fmt(struct device *dev,
 	struct regmap *regs = ssi_private->regs;
 	u32 strcr = 0, stcr, srcr, scr, mask;
 	u8 wm;
-	printk(KERN_INFO "*** %s\n", __func__);
 	ssi_private->dai_fmt = fmt;
 
 	if (fsl_ssi_is_i2s_master(ssi_private) && IS_ERR(ssi_private->baudclk)) {
@@ -943,7 +944,7 @@ static int _fsl_ssi_set_dai_fmt(struct device *dev,
 	 * size.
 	 */
 	if (ssi_private->use_dma)
-		wm = ssi_private->fifo_depth - 2;
+		wm = ssi_private->fifo_depth - FSL_SSI_WATERMARK;
 	else
 		wm = ssi_private->fifo_depth;
 
@@ -963,7 +964,6 @@ static int _fsl_ssi_set_dai_fmt(struct device *dev,
 	if ((fmt & SND_SOC_DAIFMT_FORMAT_MASK) == SND_SOC_DAIFMT_AC97)
 		fsl_ssi_setup_ac97(ssi_private);
 
-	printk(KERN_INFO "***--- %s\n", __func__);
 	return 0;
 
 }
@@ -1071,13 +1071,11 @@ static int fsl_ssi_trigger(struct snd_pcm_substream *substream, int cmd,
 static int fsl_ssi_dai_probe(struct snd_soc_dai *dai)
 {
 	struct fsl_ssi_private *ssi_private = snd_soc_dai_get_drvdata(dai);
-	printk(KERN_INFO "*** %s\n", __func__);
 
 	if (ssi_private->soc->imx && ssi_private->use_dma) {
 		dai->playback_dma_data = &ssi_private->dma_params_tx;
 		dai->capture_dma_data = &ssi_private->dma_params_rx;
 	}
-	printk(KERN_INFO "***--- %s\n", __func__);
 
 	return 0;
 }
@@ -1260,8 +1258,8 @@ static int fsl_ssi_imx_probe(struct platform_device *pdev,
 	 * We have burstsize be "fifo_depth - 2" to match the SSI
 	 * watermark setting in fsl_ssi_startup().
 	 */
-	ssi_private->dma_params_tx.maxburst = ssi_private->fifo_depth - 2;
-	ssi_private->dma_params_rx.maxburst = ssi_private->fifo_depth - 2;
+	ssi_private->dma_params_tx.maxburst = ssi_private->fifo_depth - FSL_SSI_WATERMARK;
+	ssi_private->dma_params_rx.maxburst = ssi_private->fifo_depth - FSL_SSI_WATERMARK;
 	ssi_private->dma_params_tx.addr = ssi_private->ssi_phys + CCSR_SSI_STX0;
 	ssi_private->dma_params_rx.addr = ssi_private->ssi_phys + CCSR_SSI_SRX0;
 
@@ -1401,7 +1399,6 @@ static int fsl_ssi_probe(struct platform_device *pdev)
 	if (!of_find_property(np, "fsl,ssi-asynchronous", NULL)) {
 		if (!fsl_ssi_is_ac97(ssi_private))
 			ssi_private->cpu_dai_drv.symmetric_rates = 1;
-		printk(KERN_INFO "*** %s, symmetric_channels & samplebits\n", __func__);
 		ssi_private->cpu_dai_drv.symmetric_channels = 1;
 		ssi_private->cpu_dai_drv.symmetric_samplebits = 1;
 	}

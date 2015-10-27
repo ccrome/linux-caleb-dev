@@ -41,7 +41,7 @@ static const struct snd_pcm_hardware imx_pcm_hardware = {
 		SNDRV_PCM_INFO_PAUSE |
 		SNDRV_PCM_INFO_RESUME,
 	.buffer_bytes_max = IMX_DEFAULT_DMABUF_SIZE,
-	.period_bytes_min = 128,
+	.period_bytes_min = 128*16,
 	.period_bytes_max = 65535, /* Limited by SDMA engine */
 	.periods_min = 2,
 	.periods_max = 255,
