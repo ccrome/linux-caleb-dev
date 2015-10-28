@@ -299,6 +299,18 @@ static irqreturn_t fsl_ssi_isr(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+// call fsl_ssi_dbg_update_sier_enbled every time sier is
+// updated.  it tracks which interrupts have ever been enabled.
+// so that the print function can keep track.
+void fsl_ssi_update_sier_enabled(
+	struct fsl_ssi_private *ssi_private)
+{
+	int sier;
+	struct regmap *regs = ssi_private->regs;
+	regmap_read(regs, CCSR_SSI_SIER, &sier);
+	ssi_private->dbg_stats.sier_ever_enabled |= sier;
+}
+
 /*
  * Enable/Disable all rx/tx config flags at once.
  */
@@ -312,6 +324,7 @@ static void fsl_ssi_rxtx_config(struct fsl_ssi_private *ssi_private,
 		regmap_update_bits(regs, CCSR_SSI_SIER,
 				vals->rx.sier | vals->tx.sier,
 				vals->rx.sier | vals->tx.sier);
+		fsl_ssi_update_sier_enabled(ssi_private);
 		regmap_update_bits(regs, CCSR_SSI_SRCR,
 				vals->rx.srcr | vals->tx.srcr,
 				vals->rx.srcr | vals->tx.srcr);
@@ -404,6 +417,7 @@ static void fsl_ssi_config(struct fsl_ssi_private *ssi_private, bool enable,
 	 */
 	if (enable) {
 		regmap_update_bits(regs, CCSR_SSI_SIER, vals->sier, vals->sier);
+		fsl_ssi_update_sier_enabled(ssi_private);
 		regmap_update_bits(regs, CCSR_SSI_SRCR, vals->srcr, vals->srcr);
 		regmap_update_bits(regs, CCSR_SSI_STCR, vals->stcr, vals->stcr);
 	} else {
@@ -431,6 +445,7 @@ static void fsl_ssi_config(struct fsl_ssi_private *ssi_private, bool enable,
 		regmap_update_bits(regs, CCSR_SSI_SRCR, srcr, 0);
 		regmap_update_bits(regs, CCSR_SSI_STCR, stcr, 0);
 		regmap_update_bits(regs, CCSR_SSI_SIER, sier, 0);
+		fsl_ssi_update_sier_enabled(ssi_private);
 	}
 
 config_done:
