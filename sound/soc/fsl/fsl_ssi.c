@@ -86,7 +86,13 @@
 	 SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S24_LE)
 #endif
 
-#define FSLSSI_SIER_DBG_RX_FLAGS (CCSR_SSI_SIER_RFF0_EN | \
+// interrupts that are useful during DMA
+#define FSLSSI_SIER_DBG_RX_FLAGS_DMA (CCSR_SSI_SIER_ROE0_EN | \
+				      CCSR_SSI_SIER_ROE1_EN )
+#define FSLSSI_SIER_DBG_TX_FLAGS_DMA (CCSR_SSI_SIER_TUE0_EN | \
+				      CCSR_SSI_SIER_TUE1_EN )
+// interrupts useful for non-dma
+#define FSLSSI_SIER_DBG_RX_FLAGS (CCSR_SSI_SIER_RFF0_EN |     \
 		CCSR_SSI_SIER_RLS_EN | CCSR_SSI_SIER_RFS_EN | \
 		CCSR_SSI_SIER_ROE0_EN | CCSR_SSI_SIER_RFRC_EN)
 #define FSLSSI_SIER_DBG_TX_FLAGS (CCSR_SSI_SIER_TFE0_EN | \
@@ -416,6 +422,17 @@ static void fsl_ssi_config(struct fsl_ssi_private *ssi_private, bool enable,
 	 * (online configuration)
 	 */
 	if (enable) {
+		if (ssi_private->use_dma) {
+			// disable the TDE1, TDE0, TFE1, TFE0, which are enabled
+			// by default to prevent interrupts multiple times per
+			// frame
+			regmap_update_bits(regs, CCSR_SSI_SIER,
+					   CCSR_SSI_SIER_TDE1_EN |
+					   CCSR_SSI_SIER_TDE0_EN |
+					   CCSR_SSI_SIER_TFE1_EN |
+					   CCSR_SSI_SIER_TFE0_EN,
+					   0);
+		}
 		regmap_update_bits(regs, CCSR_SSI_SIER, vals->sier, vals->sier);
 		fsl_ssi_update_sier_enabled(ssi_private);
 		regmap_update_bits(regs, CCSR_SSI_SRCR, vals->srcr, vals->srcr);
@@ -473,31 +490,36 @@ static void fsl_ssi_tx_config(struct fsl_ssi_private *ssi_private, bool enable)
 static void fsl_ssi_setup_reg_vals(struct fsl_ssi_private *ssi_private)
 {
 	struct fsl_ssi_rxtx_reg_val *reg = &ssi_private->rxtx_reg_val;
-
-	reg->rx.sier = CCSR_SSI_SIER_RFF0_EN;
+	if (!ssi_private->use_dma) {
+		reg->rx.sier = CCSR_SSI_SIER_RFF0_EN;
+		reg->tx.sier = CCSR_SSI_SIER_TFE0_EN;
+	}
 	reg->rx.srcr = CCSR_SSI_SRCR_RFEN0;
 	reg->rx.scr = 0;
-	reg->tx.sier = CCSR_SSI_SIER_TFE0_EN;
 	reg->tx.stcr = CCSR_SSI_STCR_TFEN0;
 	reg->tx.scr = 0;
 
 	if (!fsl_ssi_is_ac97(ssi_private)) {
 		reg->rx.scr = CCSR_SSI_SCR_SSIEN | CCSR_SSI_SCR_RE;
-		reg->rx.sier |= CCSR_SSI_SIER_RFF0_EN;
 		reg->tx.scr = CCSR_SSI_SCR_SSIEN | CCSR_SSI_SCR_TE;
-		reg->tx.sier |= CCSR_SSI_SIER_TFE0_EN;
+		if (!ssi_private->use_dma) {
+			reg->rx.sier |= CCSR_SSI_SIER_RFF0_EN;
+			reg->tx.sier |= CCSR_SSI_SIER_TFE0_EN;
+		}
 	}
 
 	if (ssi_private->use_dma) {
 		reg->rx.sier |= CCSR_SSI_SIER_RDMAE;
 		reg->tx.sier |= CCSR_SSI_SIER_TDMAE;
+		reg->rx.sier |= FSLSSI_SIER_DBG_RX_FLAGS_DMA;
+		reg->tx.sier |= FSLSSI_SIER_DBG_TX_FLAGS_DMA;
 	} else {
-		reg->rx.sier |= CCSR_SSI_SIER_RIE;
-		reg->tx.sier |= CCSR_SSI_SIER_TIE;
+		reg->rx.sier |= FSLSSI_SIER_DBG_RX_FLAGS;
+		reg->tx.sier |= FSLSSI_SIER_DBG_TX_FLAGS;
 	}
+	reg->rx.sier |= CCSR_SSI_SIER_RIE;
+	reg->tx.sier |= CCSR_SSI_SIER_TIE;
 
-	reg->rx.sier |= FSLSSI_SIER_DBG_RX_FLAGS;
-	reg->tx.sier |= FSLSSI_SIER_DBG_TX_FLAGS;
 }
 
 static void fsl_ssi_setup_ac97(struct fsl_ssi_private *ssi_private)
