@@ -836,7 +836,6 @@ static int _fsl_ssi_set_dai_fmt(struct device *dev,
 {
 	struct regmap *regs = ssi_private->regs;
 	u32 strcr = 0, stcr, srcr, scr, mask;
-	u8 wm;
 	printk(KERN_INFO "*** %s\n", __func__);
 	ssi_private->dai_fmt = fmt;
 
@@ -981,14 +980,9 @@ static int _fsl_ssi_set_dai_fmt(struct device *dev,
 	 * fiq it is probably better to use the biggest possible watermark
 	 * size.
 	 */
-	if (ssi_private->use_dma)
-		wm = ssi_private->fifo_depth - 2;
-	else
-		wm = ssi_private->fifo_depth;
-
 	regmap_write(regs, CCSR_SSI_SFCSR,
-			CCSR_SSI_SFCSR_TFWM0(wm) | CCSR_SSI_SFCSR_RFWM0(wm) |
-			CCSR_SSI_SFCSR_TFWM1(wm) | CCSR_SSI_SFCSR_RFWM1(wm));
+			CCSR_SSI_SFCSR_TFWM0(8) | CCSR_SSI_SFCSR_RFWM0(8) |
+			CCSR_SSI_SFCSR_TFWM1(8) | CCSR_SSI_SFCSR_RFWM1(8));
 
 	if (ssi_private->use_dual_fifo) {
 		regmap_update_bits(regs, CCSR_SSI_SRCR, CCSR_SSI_SRCR_RFEN1,
@@ -1299,8 +1293,8 @@ static int fsl_ssi_imx_probe(struct platform_device *pdev,
 	 * We have burstsize be "fifo_depth - 2" to match the SSI
 	 * watermark setting in fsl_ssi_startup().
 	 */
-	ssi_private->dma_params_tx.maxburst = ssi_private->fifo_depth - 2;
-	ssi_private->dma_params_rx.maxburst = ssi_private->fifo_depth - 2;
+	ssi_private->dma_params_tx.maxburst = 8;
+	ssi_private->dma_params_rx.maxburst = 8;
 	ssi_private->dma_params_tx.addr = ssi_private->ssi_phys + CCSR_SSI_STX0;
 	ssi_private->dma_params_rx.addr = ssi_private->ssi_phys + CCSR_SSI_SRX0;
 
@@ -1310,8 +1304,10 @@ static int fsl_ssi_imx_probe(struct platform_device *pdev,
 		/* When using dual fifo mode, we need to keep watermark
 		 * as even numbers due to dma script limitation.
 		 */
-		ssi_private->dma_params_tx.maxburst &= ~0x1;
-		ssi_private->dma_params_rx.maxburst &= ~0x1;
+		dev_info(&pdev->dev, "tunning burst size for Dual FIFO mode\n");
+		ssi_private->dma_params_tx.maxburst = 8;
+		ssi_private->dma_params_rx.maxburst = 8;
+		printk (KERN_INFO "we're definitely in dual fifo mode now!\n");
 	}
 
 	if (!ssi_private->use_dma) {
