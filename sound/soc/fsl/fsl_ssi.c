@@ -435,8 +435,47 @@ static void fsl_ssi_config(struct fsl_ssi_private *ssi_private, bool enable,
 
 config_done:
 	/* Enabling of subunits is done after configuration */
-	if (enable)
+	if (enable) {
+		int tfcnt0 = 0;
+		int max_iterations = 1000;
+		/* eanble SSI */
+		regmap_update_bits(regs, CCSR_SSI_SCR,
+				   CCSR_SSI_SCR_SSIEN,
+				   CCSR_SSI_SCR_SSIEN);
+		/*
+		 * We must wait here until the DMA actually manages to
+		 * get a word into the Tx FIFO.  Only if starting a Tx
+		 * stream.
+		 * In tests on an MX6 at 1GHz clock speed, the do
+		 * loop below never iterated at all (i.e. it dropped
+		 * through without repeating ever.  which means that
+		 * the DMA has had time to get some words into the TX
+		 * buffer. In fact, the tfcnt0 was always 13, so it
+		 * was quite full by the time it reached this point,
+		 * so this do loop should never be a bottleneck.  If
+		 * max iterations is hit, then something might be
+		 * wrong.  report it in that case.
+		 */
+		if (vals->scr & CCSR_SSI_SCR_TE) {
+			u32 sfcsr;
+			do {
+				regmap_read(regs, CCSR_SSI_SFCSR, &sfcsr);
+				tfcnt0 = CCSR_SSI_SFCSR_TFCNT0(sfcsr);
+			} while(max_iterations-- && (tfcnt0 == 0));
+		}
+		if (max_iterations <= 0) {
+			/*
+			 * The DMA definitely should have stuck at
+			 * least a word into the FIFO by now.  Report
+			 * an error, but continue on blindly anyway,
+			 * even though the SSI might not start right.
+			 */
+			struct platform_device *pdev = ssi_private->pdev;
+			dev_err(&pdev->dev, "max_iterations reached when"
+				"starting SSI Tx\n");
+		}
 		regmap_update_bits(regs, CCSR_SSI_SCR, vals->scr, vals->scr);
+	}
 }
 
 
