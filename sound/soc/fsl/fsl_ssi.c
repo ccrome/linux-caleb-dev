@@ -422,17 +422,6 @@ static void fsl_ssi_config(struct fsl_ssi_private *ssi_private, bool enable,
 	 * (online configuration)
 	 */
 	if (enable) {
-		if (ssi_private->use_dma) {
-			// disable the TDE1, TDE0, TFE1, TFE0, which are enabled
-			// by default to prevent interrupts multiple times per
-			// frame
-			regmap_update_bits(regs, CCSR_SSI_SIER,
-					   CCSR_SSI_SIER_TDE1_EN |
-					   CCSR_SSI_SIER_TDE0_EN |
-					   CCSR_SSI_SIER_TFE1_EN |
-					   CCSR_SSI_SIER_TFE0_EN,
-					   0);
-		}
 		regmap_update_bits(regs, CCSR_SSI_SIER, vals->sier, vals->sier);
 		fsl_ssi_update_sier_enabled(ssi_private);
 		regmap_update_bits(regs, CCSR_SSI_SRCR, vals->srcr, vals->srcr);
@@ -470,6 +459,20 @@ config_done:
 	if (enable) {
 		int tfcnt0 = 0;
 		int max_iterations = 1000;
+
+		if (ssi_private->use_dma) {
+			// disable the TDE1, TDE0, TFE1, TFE0, which are enabled
+			// by default to prevent interrupts multiple times per
+			// frame
+			regmap_update_bits(regs, CCSR_SSI_SIER,
+					   CCSR_SSI_SIER_TDE1_EN |
+					   CCSR_SSI_SIER_TDE0_EN |
+					   CCSR_SSI_SIER_TFE1_EN |
+					   CCSR_SSI_SIER_TFE0_EN,
+					   0);
+			fsl_ssi_update_sier_enabled(ssi_private);
+		}
+
 		/* eanble SSI */
 		regmap_update_bits(regs, CCSR_SSI_SCR,
 				   CCSR_SSI_SCR_SSIEN,
