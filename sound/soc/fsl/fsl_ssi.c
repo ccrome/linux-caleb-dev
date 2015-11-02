@@ -239,7 +239,7 @@ static struct fsl_ssi_soc_data fsl_ssi_imx35 = {
 
 static struct fsl_ssi_soc_data fsl_ssi_imx51 = {
 	.imx = true,
-	.offline_config = false,
+	.offline_config = true,
 	.sisr_write_mask = CCSR_SSI_SISR_ROE0 | CCSR_SSI_SISR_ROE1 |
 		CCSR_SSI_SISR_TUE0 | CCSR_SSI_SISR_TUE1,
 };
