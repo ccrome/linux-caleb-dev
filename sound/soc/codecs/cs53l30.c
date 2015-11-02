@@ -14,6 +14,8 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/initval.h>
+
+
 /* codec private data */
 struct cs53l30_priv {
 	struct snd_soc_codec *codec;
@@ -45,11 +47,41 @@ static const struct regmap_config cs53l30_regmap = {
 	.num_reg_defaults = ARRAY_SIZE(cs53l30_reg),
 	.cache_type = REGCACHE_RBTREE,
 };
-
+static int cs53l30_hw_params(struct snd_pcm_substream *substream,
+			     struct snd_pcm_hw_params *params,
+			     struct snd_soc_dai *dai)
+{
+	struct snd_soc_codec *codec = dai->codec;
+	struct cs53l30_priv *cs53l30 = snd_soc_codec_get_drvdata(codec);
+	/*
+	 * valid rates are 16k and 48k
+	 */
+	int fs = (params_rate(params));
+	switch (fs) {
+	case 48000:
+		snd_soc_update_bits(codec, 0x0C, 0x0F, 0x0c);
+		break;
+	case 16000:
+		snd_soc_update_bits(codec, 0x0C, 0x0F, 0x05);
+		break;
+	default:
+		/* unsupported rate */
+		return -EINVAL;
+	}
+	return 0;
+}
 static int cs53l30_init(struct snd_soc_codec *codec)
 {
 	int ret;
-	
+	/* 
+	 * ext MCLK = 12.288 MHz
+	 * 16kHz Sample rate: 16K    48K
+	 *   MCLK_INT_SCALE   0      x
+	 *   ASP_RATE         0101   1100
+	 *   FSINT            48.000 48.000
+	 *   LRCK             16.000 48.000
+	 *   MCLK/LRCK RATIO  768    256
+	 */
 	//struct cs53l301_priv *cs53l30 = snd_soc_codec_get_drvdata(codec);
 	printk(KERN_INFO "*** %s\n", __func__);
 	// follow data sheet
@@ -112,7 +144,7 @@ static struct snd_soc_codec_driver soc_codec_dev_cs53l30 = {
 };
 
 static const struct snd_soc_dai_ops cs53l30_dai_ops = {
-	// .hw_params	= cs53l30_hw_params,
+	.hw_params	= cs53l30_hw_params,
 	// .prepare	= cs53l30_prepare,
 	// .digital_mute	= cs53l30_mute,
 	// .set_sysclk	= cs53l30_set_dai_sysclk,
@@ -126,14 +158,14 @@ static struct snd_soc_dai_driver cs53l30_dai = {
 		.stream_name = "Capture",
 		.channels_min = 1,
 		.channels_max = 16,
-		.rates = SNDRV_PCM_RATE_48000,
+		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_16000,
 		.formats =SNDRV_PCM_FMTBIT_S16_LE,
 	},
 	.playback = {
 		.stream_name = "Capture",
 		.channels_min = 1,
 		.channels_max = 16,
-		.rates = SNDRV_PCM_RATE_48000,
+		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_16000,
 		.formats =SNDRV_PCM_FMTBIT_S16_LE,
 	},
 	.ops = &cs53l30_dai_ops,
