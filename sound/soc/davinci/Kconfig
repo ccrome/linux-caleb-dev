@@ -45,6 +45,12 @@ config SND_AM33XX_SOC_EVM
 	  AM335X-EVMSK, and BeagelBone with AudioCape boards have this
 	  setup.
 
+config SND_PUPPY
+       tristate "Puppy Driver"
+       select SND_DAVINCI_SOC_GENERIC_EVM
+	select SND_SOC_TLV320AIC3X
+	select SND_OMAP_SOC_MCBSP
+
 config SND_DAVINCI_SOC_EVM
 	tristate "SoC Audio support for DaVinci DM6446, DM355 or DM365 EVM"
 	depends on SND_EDMA_SOC && I2C

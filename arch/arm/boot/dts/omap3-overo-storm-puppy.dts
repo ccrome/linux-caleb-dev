@@ -1,0 +1,138 @@
+/*
+ * Copyright (C) 2015 Caleb Crome, Signal Essence, LLC
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+/*
+ * Puppy codec board
+ */
+
+/dts-v1/;
+
+#include "omap3-overo-storm.dtsi"
+#include "omap3-overo-alto35-common.dtsi"
+
+/ {
+	model = "OMAP36xx/AM37xx/DM37xx Gumstix Overo On Puppy";
+	compatible = "gumstix,omap3-puppy", "gumstix,omap3-overo", "ti,omap36xx", "ti,omap3";
+
+};
+
+
+&omap3_pmx_core {
+//	mcbsp2_pins: pinmux_mcbsp2_pins {
+//		pinctrl-single,pins = <
+//			OMAP3_CORE1_IOPAD(0x213c, PIN_INPUT | MUX_MODE0)	/* mcbsp2_fsx */
+//			OMAP3_CORE1_IOPAD(0x213e, PIN_INPUT | MUX_MODE0)	/* mcbsp2_clkx */
+//			OMAP3_CORE1_IOPAD(0x2140, PIN_INPUT | MUX_MODE0)	/* mcbsp2_dr */
+//			OMAP3_CORE1_IOPAD(0x2142, PIN_OUTPUT | MUX_MODE0)	/* mcbsp2_dx */
+//		>;
+//	};
+
+/*
+ *  MCBSP3 is available on 
+ *  OVERO         OVERO              OMAP  NAME           ALT   PAD_NAME
+ *  PIN           NAME               PIN                  
+ *  J1.55 	  GPIO145_GPT10_PWM  AB25  MCBSP3_DR      1     UART2_RTS
+ *  J1.21 	  GPIO146_GPT11_PWM  AA25  MCBSP3_CLKX    1     UART2_TX
+ *  J1.16 	  GPIO147_GPT8_PWM   AD25  MCBSP3_FSX     1     UART2_RX
+ *  J1.18 	  GPIO144_GPT9_PWM   AB26  MCBSP3_DX      1     UART2_CTS
+ *  
+ *  J1.13, J5.26  GPIO184_I2C3_SCL   AF14  I2C3_SCL       0     I2C3_SCL
+ *  j1.10, j5.27  GPIO185_I2C3_SDA   AG14  U2C3_SDA       0     I2C3_SDA
+ */
+	mcbsp3_pins: pinmux_mcbsp3_pins {
+		pinctrl-single,pins = <
+			OMAP3_CORE1_IOPAD(0x2178, PIN_INPUT  | MUX_MODE1)  /* UART2_TX. MCBSP3_CLKX */
+			OMAP3_CORE1_IOPAD(0x217a, PIN_INPUT  | MUX_MODE1)  /* UART2_RX. MCBSP3_FSX  */
+			OMAP3_CORE1_IOPAD(0x2176, PIN_INPUT  | MUX_MODE1)  /* UART2_RTS.MCBSP3_DR   */
+			OMAP3_CORE1_IOPAD(0x2174, PIN_OUTPUT | MUX_MODE1)  /* UART2_CTS.MCBSP_DX    */
+		>;
+	};
+	i2c3_pins: pinmux_i2c3_pins {
+		pinctrl-single,pins = <
+			OMAP3_CORE1_IOPAD(0x21c2, PIN_INPUT | MUX_MODE0)	/* i2c3_scl.i2c3_scl */
+			OMAP3_CORE1_IOPAD(0x21c4, PIN_INPUT | MUX_MODE0)	/* i2c3_sda.i2c3_sda */
+		>;
+	};
+};
+
+&i2c3 {
+        status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c3_pins>;
+	clock-frequency = <150000>;
+
+	tlv320aic3x_a: tlv320aic3x@18 {
+		compatible = "ti,tlv320aic3x";
+		reg = <0x18>;
+		tdm-offset = <0>;
+		gpio-reset = <&gpio1 28 GPIO_ACTIVE_HIGH>; /* all resets are tied together... */
+		status = "okay";
+	};
+	
+	tlv320aic3x_b: tlv320aic3x@19 {
+		compatible = "ti,tlv320aic3x";
+		reg = <0x19>;
+		tdm-offset = <32>;
+		status = "okay";
+	};
+	
+	tlv320aic3x_c: tlv320aic3x@1a {
+		compatible = "ti,tlv320aic3x";
+		reg = <0x1a>;
+		tdm-offset = <64>;
+		status = "okay";
+	};
+	
+	tlv320aic3x_d: tlv320aic3x@1b {
+		compatible = "ti,tlv320aic3x";
+		reg = <0x1b>;
+		tdm-offset = <96>;
+		status = "okay";
+	};
+	
+};
+
+
+&mcbsp3 {
+	status = "ok";
+	pinctrl-names = "default";
+	pinctrl-0 = <&mcbsp3_pins>;
+};
+
+/ {
+	sound {
+		compatible = "ti,da830-evm-audio";
+		ti,model = "PUPPY-AUDIO";
+		ti,audio-codec = <
+			       &tlv320aic3x_a 
+			       &tlv320aic3x_b 
+			       &tlv320aic3x_c
+			       &tlv320aic3x_d
+			       >;
+		ti,mcasp-controller = <&mcbsp3>;
+		ti,codec-clock-rate = <12288000>;
+		ti,audio-routing =
+			"Headphone Jack",       "a HPLOUT",
+			"Headphone Jack",       "a HPROUT",
+			"Headphone Jack",       "b HPLOUT",
+			"Headphone Jack",       "b HPROUT",
+			"Headphone Jack",       "c HPLOUT",
+			"Headphone Jack",       "c HPROUT",
+			"Headphone Jack",       "d HPLOUT",
+			"Headphone Jack",       "d HPROUT",
+			"a LINE1L",               "Line In",
+			"a LINE1R",               "Line In",
+			"b LINE1L",               "Line In",
+			"b LINE1R",               "Line In",
+			"c LINE1L",               "Line In",
+			"c LINE1R",               "Line In",
+			"d LINE1L",               "Line In",
+			"d LINE1R",               "Line In";
+		status="okay";
+	};
+};

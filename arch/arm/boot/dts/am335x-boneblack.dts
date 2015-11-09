@@ -5,10 +5,24 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+
+
+
+/* 
+   * MCASP pin mapping
+   *                          ball   BBB
+   * MCASP0_ACLKX             A13    P9.31
+   * MCASP0_AFSX              B13    P9.29
+   * MCASP0_AXR2  (mcasp OUT) C12    P9.28
+   * MCASP0_AXR3  (mcasp IN)  A14    P9.25
+*/
+
 /dts-v1/;
 
 #include "am33xx.dtsi"
 #include "am335x-bone-common.dtsi"
+
+
 
 / {
 	model = "TI AM335x BeagleBone Black";
@@ -34,49 +48,118 @@
 };
 
 &am33xx_pinmux {
-	nxp_hdmi_bonelt_pins: nxp_hdmi_bonelt_pins {
-		pinctrl-single,pins = <
-			0x1b0 0x03      /* xdma_event_intr0, OMAP_MUX_MODE3 | AM33XX_PIN_OUTPUT */
-			0xa0 0x08       /* lcd_data0.lcd_data0, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xa4 0x08       /* lcd_data1.lcd_data1, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xa8 0x08       /* lcd_data2.lcd_data2, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xac 0x08       /* lcd_data3.lcd_data3, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xb0 0x08       /* lcd_data4.lcd_data4, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xb4 0x08       /* lcd_data5.lcd_data5, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xb8 0x08       /* lcd_data6.lcd_data6, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xbc 0x08       /* lcd_data7.lcd_data7, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xc0 0x08       /* lcd_data8.lcd_data8, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xc4 0x08       /* lcd_data9.lcd_data9, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xc8 0x08       /* lcd_data10.lcd_data10, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xcc 0x08       /* lcd_data11.lcd_data11, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xd0 0x08       /* lcd_data12.lcd_data12, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xd4 0x08       /* lcd_data13.lcd_data13, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xd8 0x08       /* lcd_data14.lcd_data14, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xdc 0x08       /* lcd_data15.lcd_data15, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT | AM33XX_PULL_DISA */
-			0xe0 0x00       /* lcd_vsync.lcd_vsync, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT */
-			0xe4 0x00       /* lcd_hsync.lcd_hsync, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT */
-			0xe8 0x00       /* lcd_pclk.lcd_pclk, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT */
-			0xec 0x00       /* lcd_ac_bias_en.lcd_ac_bias_en, OMAP_MUX_MODE0 | AM33XX_PIN_OUTPUT */
-		>;
+	i2c2_pins_default: i2c2_pins_default {
+	        pinctrl-single,pins = <
+	                0x17c ( PIN_INPUT_PULLUP | MUX_MODE3 ) /* (D17) uart1_rtsn.I2C2_SCL */
+	                0x178 ( PIN_INPUT_PULLUP | MUX_MODE3 ) /* (D18) uart1_ctsn.I2C2_SDA */
+	        >;
 	};
-	nxp_hdmi_bonelt_off_pins: nxp_hdmi_bonelt_off_pins {
+
+
+	i2c1_pins_default: pinmux_i2c1_pins {
+                       pinctrl-single,pins = <
+                               0x158 0x72      /* uart1_ctsn.i2c2_sda, SLEWCTRL_SLOW | INPUT_PULLUP | MODE2 */
+                               0x15c 0x72      /* uart1_rtsn.i2c2_scl, SLEWCTRL_SLOW | INPUT_PULLUP | MODE2 */
+                       >;
+        };
+	
+	mcasp_0_pins_default: mcasp_0_pins_default {
 		pinctrl-single,pins = <
-			0x1b0 0x03      /* xdma_event_intr0, OMAP_MUX_MODE3 | AM33XX_PIN_OUTPUT */
+			0x190 ( PIN_INPUT | MUX_MODE0 ) /* (A13) mcasp0_aclkx.mcasp0_aclkx */
+			0x194 ( PIN_INPUT | MUX_MODE0 ) /* (B13) mcasp0_fsx.mcasp0_fsx */
+			0x19c ( PIN_OUTPUT | MUX_MODE2 ) /* (C12) mcasp0_ahclkr.mcasp0_axr2 */
+			0x1ac ( PIN_INPUT | MUX_MODE2 ) /* (A14) mcasp0_ahclkx.mcasp0_axr3 */
 		>;
 	};
 };
 
-&lcdc {
+
+&i2c1 {
+	clock-frequency = <100000>;
 	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c1_pins_default>;
+	status="okay";
+
+	tlv320aic3x_a: tlv320aic3x@18 {
+		compatible = "ti,tlv320aic3x";
+		reg = <0x18>;
+		tdm-offset = <0>;
+		gpio-reset = <&gpio1 28 GPIO_ACTIVE_HIGH>; /* all resets are tied together... */
+		status = "okay";
+	};
+	
+	tlv320aic3x_b: tlv320aic3x@19 {
+		compatible = "ti,tlv320aic3x";
+		reg = <0x19>;
+		tdm-offset = <32>;
+		status = "okay";
+	};
+	
+	tlv320aic3x_c: tlv320aic3x@1a {
+		compatible = "ti,tlv320aic3x";
+		reg = <0x1a>;
+		tdm-offset = <64>;
+		status = "okay";
+	};
+	
+	tlv320aic3x_d: tlv320aic3x@1b {
+		compatible = "ti,tlv320aic3x";
+		reg = <0x1b>;
+		tdm-offset = <96>;
+		status = "okay";
+	};
+	
 };
+
+&mcasp0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&mcasp_0_pins_default>;
+	status = "okay";
+
+	op-mode = <0>;          /* MCASP_IIS_MODE */
+	tdm-slots = <16>;
+	num-serializer = <16>;
+	serial-dir = <  /* 0: INACTIVE, 1: TX, 2: RX */ 
+		0 0 1 2
+		0 0 0 0
+		0 0 0 0
+		0 0 0 0
+	>;
+	tx-num-evt = <1>;
+	rx-num-evt = <1>;
+};
+
 
 / {
-	hdmi {
-		compatible = "ti,tilcdc,slave";
-		i2c = <&i2c0>;
-		pinctrl-names = "default", "off";
-		pinctrl-0 = <&nxp_hdmi_bonelt_pins>;
-		pinctrl-1 = <&nxp_hdmi_bonelt_off_pins>;
-		status = "okay";
+	sound {
+		compatible = "ti,da830-evm-audio";
+		ti,model = "PUPPY-AUDIO";
+		ti,audio-codec = <
+			       &tlv320aic3x_a 
+			       &tlv320aic3x_b 
+			       &tlv320aic3x_c
+			       &tlv320aic3x_d
+			       >;
+		ti,mcasp-controller = <&mcasp0>;
+		ti,codec-clock-rate = <12288000>;
+		ti,audio-routing =
+			"Headphone Jack",       "a HPLOUT",
+			"Headphone Jack",       "a HPROUT",
+			"Headphone Jack",       "b HPLOUT",
+			"Headphone Jack",       "b HPROUT",
+			"Headphone Jack",       "c HPLOUT",
+			"Headphone Jack",       "c HPROUT",
+			"Headphone Jack",       "d HPLOUT",
+			"Headphone Jack",       "d HPROUT",
+			"a LINE1L",               "Line In",
+			"a LINE1R",               "Line In",
+			"b LINE1L",               "Line In",
+			"b LINE1R",               "Line In",
+			"c LINE1L",               "Line In",
+			"c LINE1R",               "Line In",
+			"d LINE1L",               "Line In",
+			"d LINE1R",               "Line In";
+		status="okay";
 	};
 };

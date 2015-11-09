@@ -23,10 +23,16 @@
 
 #include <asm/dma.h>
 #include <asm/mach-types.h>
+#include "../codecs/tlv320aic3x.h"
+
+#define MASTER_DAI_FMT (SND_SOC_DAIFMT_DSP_B | SND_SOC_DAIFMT_CBM_CFM | SND_SOC_DAIFMT_IB_NF)
+#define SLAVE_DAI_FMT  (SND_SOC_DAIFMT_DSP_B | SND_SOC_DAIFMT_CBS_CFS | SND_SOC_DAIFMT_IB_NF)
+int aic3x_set_dai_fmt(struct snd_soc_dai *codec_dai, unsigned int fmt);
 
 struct snd_soc_card_drvdata_davinci {
 	struct clk *mclk;
 	unsigned sysclk;
+        int controls_added_already;
 };
 
 static int evm_startup(struct snd_pcm_substream *substream)
@@ -53,34 +59,56 @@ static void evm_shutdown(struct snd_pcm_substream *substream)
 		clk_disable_unprepare(drvdata->mclk);
 }
 
+
+static int setup_puppy_codecs(struct snd_soc_pcm_runtime *rtd)
+{
+	unsigned int tdm_mask;
+	struct snd_soc_card *soc_card = rtd->card;
+	struct snd_soc_card_drvdata_davinci *drvdata = snd_soc_card_get_drvdata(soc_card);
+	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	unsigned sysclk = drvdata->sysclk;
+	int i;
+	int ret = 0;
+	printk(KERN_INFO "*** %s setup\n", __func__);
+	if (drvdata->mclk)
+		return clk_prepare_enable(drvdata->mclk);
+
+	{
+		struct snd_soc_codec *codec0 = rtd->codec_dais[0]->codec;
+		u8 iface_areg;
+		printk(KERN_INFO "--- %s sysclk\n", __func__);
+		// Step 5 -- set blkc to output on codec 0
+		iface_areg = snd_soc_read(codec0, AIC3X_ASD_INTF_CTRLA) & 0x3f;
+		iface_areg |= (1<<7) | (1<<6);
+		snd_soc_write(codec0, AIC3X_ASD_INTF_CTRLA, iface_areg  );// set mclk & bclk as outputs for codec 0
+		
+		// step 6 -- switch clkdiv_clkin from bclk to mclk on codec 0
+		snd_soc_write(codec0, AIC3X_CLKGEN_CTRL_REG, 0); // and finally, start the actual clocks.
+	}
+
+	/* set the CPU system clock */
+	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, sysclk, SND_SOC_CLOCK_OUT);
+	//regcache_sync(codec0->regmap);
+	if (ret < 0)
+		return ret;
+	printk(KERN_INFO "--- %s setup\n", __func__);
+	return ret;
+}
 static int evm_hw_params(struct snd_pcm_substream *substream,
 			 struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_dai *codec_dai = rtd->codec_dai;
-	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	struct snd_soc_card *soc_card = rtd->card;
 	int ret = 0;
-	unsigned sysclk = ((struct snd_soc_card_drvdata_davinci *)
-			   snd_soc_card_get_drvdata(soc_card))->sysclk;
 
-	/* set the codec system clock */
-	ret = snd_soc_dai_set_sysclk(codec_dai, 0, sysclk, SND_SOC_CLOCK_OUT);
-	if (ret < 0)
-		return ret;
+	ret = setup_puppy_codecs(rtd);
 
-	/* set the CPU system clock */
-	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, sysclk, SND_SOC_CLOCK_OUT);
-	if (ret < 0)
-		return ret;
-
-	return 0;
+	return ret;
 }
 
 static struct snd_soc_ops evm_ops = {
-	.startup = evm_startup,
-	.shutdown = evm_shutdown,
-	.hw_params = evm_hw_params,
+	// .startup = evm_startup,
+	// .shutdown = evm_shutdown,
+	// .hw_params = evm_hw_params,
 };
 
 /* davinci-evm machine dapm widgets */
@@ -94,23 +122,23 @@ static const struct snd_soc_dapm_widget aic3x_dapm_widgets[] = {
 /* davinci-evm machine audio_mapnections to the codec pins */
 static const struct snd_soc_dapm_route audio_map[] = {
 	/* Headphone connected to HPLOUT, HPROUT */
-	{"Headphone Jack", NULL, "HPLOUT"},
-	{"Headphone Jack", NULL, "HPROUT"},
+	{"Headphone Jack", NULL, "a HPLOUT"},
+	{"Headphone Jack", NULL, "a HPROUT"},
 
 	/* Line Out connected to LLOUT, RLOUT */
-	{"Line Out", NULL, "LLOUT"},
-	{"Line Out", NULL, "RLOUT"},
+	{"Line Out", NULL, "a LLOUT"},
+	{"Line Out", NULL, "a RLOUT"},
 
 	/* Mic connected to (MIC3L | MIC3R) */
-	{"MIC3L", NULL, "Mic Bias"},
-	{"MIC3R", NULL, "Mic Bias"},
-	{"Mic Bias", NULL, "Mic Jack"},
+	{"a MIC3L", NULL, "Mic Bias"},
+	{"a MIC3R", NULL, "Mic Bias"},
+	{"a Mic Bias", NULL, "Mic Jack"},
 
 	/* Line In connected to (LINE1L | LINE2L), (LINE1R | LINE2R) */
-	{"LINE1L", NULL, "Line In"},
-	{"LINE2L", NULL, "Line In"},
-	{"LINE1R", NULL, "Line In"},
-	{"LINE2R", NULL, "Line In"},
+	{"a LINE1L", NULL, "Line In"},
+	{"a LINE2L", NULL, "Line In"},
+	{"a LINE1R", NULL, "Line In"},
+	{"a LINE2R", NULL, "Line In"},
 };
 
 /* Logic for a aic3x as connected on a davinci-evm */
@@ -118,11 +146,18 @@ static int evm_aic3x_init(struct snd_soc_pcm_runtime *rtd)
 {
 	struct snd_soc_card *card = rtd->card;
 	struct device_node *np = card->dev->of_node;
+	
+	struct snd_soc_card_drvdata_davinci *drvdata =
+		snd_soc_card_get_drvdata(card);
 	int ret;
 
+	printk(KERN_INFO "*** %s\n", __func__);
 	/* Add davinci-evm specific widgets */
-	snd_soc_dapm_new_controls(&card->dapm, aic3x_dapm_widgets,
-				  ARRAY_SIZE(aic3x_dapm_widgets));
+	if (!drvdata->controls_added_already) {
+	    snd_soc_dapm_new_controls(&card->dapm, aic3x_dapm_widgets,
+				      ARRAY_SIZE(aic3x_dapm_widgets));
+	    drvdata->controls_added_already = 1;
+	}
 
 	if (np) {
 		ret = snd_soc_of_parse_audio_routing(card, "ti,audio-routing");
@@ -135,12 +170,14 @@ static int evm_aic3x_init(struct snd_soc_pcm_runtime *rtd)
 	}
 
 	/* not connected */
-	snd_soc_dapm_nc_pin(&card->dapm, "MONO_LOUT");
-	snd_soc_dapm_nc_pin(&card->dapm, "HPLCOM");
-	snd_soc_dapm_nc_pin(&card->dapm, "HPRCOM");
-
+	//snd_soc_dapm_nc_pin(&card->dapm, "a MONO_LOUT");
+	//snd_soc_dapm_nc_pin(&card->dapm, "a HPLCOM");
+	//snd_soc_dapm_nc_pin(&card->dapm, "a HPRCOM");
+	setup_puppy_codecs(rtd);
+	printk(KERN_INFO "--- %s setup\n", __func__);
 	return 0;
 }
+
 
 /* davinci-evm digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link dm6446_evm_dai = {
@@ -333,11 +370,9 @@ static struct snd_soc_card da850_snd_soc_card = {
 static struct snd_soc_dai_link evm_dai_tlv320aic3x = {
 	.name		= "TLV320AIC3X",
 	.stream_name	= "AIC3X",
-	.codec_dai_name	= "tlv320aic3x-hifi",
 	.ops            = &evm_ops,
 	.init           = evm_aic3x_init,
-	.dai_fmt = SND_SOC_DAIFMT_DSP_B | SND_SOC_DAIFMT_CBM_CFM |
-		   SND_SOC_DAIFMT_IB_NF,
+	.dai_fmt        = MASTER_DAI_FMT,
 };
 
 static const struct of_device_id davinci_evm_dt_ids[] = {
@@ -355,6 +390,9 @@ static struct snd_soc_card evm_soc_card = {
 	.num_links = 1,
 };
 
+#define SE_MAX_NUM_CODECS 16
+static struct snd_soc_codec_conf evm_codec_confs[SE_MAX_NUM_CODECS];
+
 static int davinci_evm_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
@@ -364,16 +402,39 @@ static int davinci_evm_probe(struct platform_device *pdev)
 	struct snd_soc_card_drvdata_davinci *drvdata = NULL;
 	struct clk *mclk;
 	int ret = 0;
+	int i;
 
 	evm_soc_card.dai_link = dai;
+	
+	evm_soc_card.codec_conf = evm_codec_confs;
+	
+	dai->codecs = kzalloc(sizeof(dai->codecs)*SE_MAX_NUM_CODECS, GFP_KERNEL);
 
-	dai->codec_of_node = of_parse_phandle(np, "ti,audio-codec", 0);
-	if (!dai->codec_of_node)
+	for (i = 0;
+	     (of_parse_phandle(np, "ti,audio-codec", i) != NULL) && (i < SE_MAX_NUM_CODECS); 
+	     i++) {
+	    char *name_prefix = kzalloc(4, GFP_KERNEL);
+	    dai->codecs[i].of_node = of_parse_phandle(np, "ti,audio-codec", i);
+	    dai->codecs[i].dai_name	= "tlv320aic3x-hifi";
+	    
+	    if (!dai->codecs[i].of_node)
 		return -EINVAL;
+
+	    evm_codec_confs[i].of_node = dai->codecs[i].of_node;
+	    snprintf(name_prefix, 4, "%c", 'a'+i);
+	    evm_codec_confs[i].name_prefix = name_prefix;
+
+	}
+	evm_soc_card.num_configs=i;
+	dai->num_codecs = i;
+	if (dai->num_codecs == 0)  {
+	    printk(KERN_INFO "%s:  no codecs specified.  you must specify a list of ti,audio-codec in the devicetree\n", __func__);
+	    return -EINVAL;
+	}
 
 	dai->cpu_of_node = of_parse_phandle(np, "ti,mcasp-controller", 0);
 	if (!dai->cpu_of_node)
-		return -EINVAL;
+	    return -EINVAL;
 
 	dai->platform_of_node = dai->cpu_of_node;
 
@@ -417,6 +478,9 @@ static int davinci_evm_probe(struct platform_device *pdev)
 
 	snd_soc_card_set_drvdata(&evm_soc_card, drvdata);
 	ret = devm_snd_soc_register_card(&pdev->dev, &evm_soc_card);
+
+	if (drvdata->mclk)
+		return clk_prepare_enable(drvdata->mclk);
 
 	if (ret)
 		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n", ret);
