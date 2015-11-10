@@ -87,13 +87,13 @@
 		};
 	};
 
-	sound-sgtl5000 {
-		audio-codec = <&cs53l30_a>;
+	sound-puck {
+		audio-codec = <&cs53l30_a &cs53l30_b &tlv320dac3100>;
 		audio-routing =
 			"MIC_IN", "Mic Jack",
 			"Mic Jack", "Mic Bias",
 			"Headphone Jack", "HP_OUT";
-		compatible = "fsl,imx-audio-sgtl5000";
+		compatible = "se,puck";
 		model = "On-board Codec";
 		mux-ext-port = <5>;
 		mux-int-port = <1>;
@@ -157,8 +157,24 @@
 		clken-gpio  = <&gpio3 3 0>;
 		i2c-en-gpio = <&gpio3 6 0>;
 		reset-gpio  = <&gpio3 7 0>;
+		tdm-offset = <0>;
 	};
-
+	cs53l30_b: cs53l30_b@49 {
+		compatible = "ci,cs53l30";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_hummingboard_sgtl5000>;
+		reg=<0x49>;
+		status="okay";
+		clken-gpio  = <&gpio3 3 0>;
+		i2c-en-gpio = <&gpio3 6 0>;
+		reset-gpio  = <&gpio3 7 0>;
+		tdm-offset = <64>;
+	};
+	tlv320dac3100: 	tlv320dac3100@18 {
+		compatible = "ti,tlv320dac3100";
+		reg=<0x18>;
+		status = "okay";
+	};
 };
 
 &i2c2 {
