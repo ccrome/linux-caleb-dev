@@ -109,6 +109,7 @@ static int tlv320dac3100_init(struct snd_soc_codec *codec)
 	snd_soc_write(codec, 0x0d,  1);           // DOSR [9:8]
 	snd_soc_write(codec, 0x0e,  0);           // DOSR [7:0]
 	snd_soc_write(codec, 0x1b, (1<<6) | (0 << 4) | (1<<3) | (1<<2)); // DSP, 16-bits, master
+	snd_soc_write(codec, 0x1c, 1); // 1 bit offset.
 	snd_soc_write(codec, 0x1e, (1<<7) | 1<<0); // bclk divider = 1
 	snd_soc_write(codec, 0x3f, (1<<7) | (1<<6) | (1<<4) | (1<<2) );  // enable DAC.
 	snd_soc_write(codec, 0x40, 0); // unmute dacs.
@@ -192,7 +193,7 @@ static struct snd_soc_dai_driver tlv320dac3100_dai = {
 	.playback = {
 		.stream_name = "Playback",
 		.channels_min = 2,
-		.channels_max = 16,
+		.channels_max = 2,
 		.rates = SNDRV_PCM_RATE_16000,
 		.formats =SNDRV_PCM_FMTBIT_S16_LE,
 	},
