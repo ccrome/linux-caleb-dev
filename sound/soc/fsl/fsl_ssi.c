@@ -789,6 +789,8 @@ static int fsl_ssi_hw_params(struct snd_pcm_substream *substream,
 	int ret;
 	u32 scr_val;
 	int enabled;
+	int slot_mask;
+
 	printk(KERN_INFO "*** %s, channels = %d\n", __func__, channels);
 	regmap_read(regs, CCSR_SSI_SCR, &scr_val);
 	enabled = scr_val & CCSR_SSI_SCR_SSIEN;
@@ -854,6 +856,15 @@ static int fsl_ssi_hw_params(struct snd_pcm_substream *substream,
 		regmap_update_bits(regs, CCSR_SSI_SRCCR, CCSR_SSI_SxCCR_WL_MASK,
 				wl);
 
+
+	/* SSIEN must be on for STMSK or SRMSK to take effect */
+	regmap_update_bits(regs, CCSR_SSI_SCR, CCSR_SSI_SCR_SSIEN, CCSR_SSI_SCR_SSIEN);
+	slot_mask = ~((1 << channels) - 1); /* 1 for every active channel */
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+		regmap_write(regs, CCSR_SSI_STMSK, slot_mask);
+	else
+		regmap_write(regs, CCSR_SSI_SRMSK, slot_mask);
+	regmap_update_bits(regs, CCSR_SSI_SCR, CCSR_SSI_SCR_SSIEN, 0);
 	return 0;
 }
 
@@ -880,6 +891,7 @@ static int _fsl_ssi_set_dai_fmt(struct device *dev,
 	struct regmap *regs = ssi_private->regs;
 	u32 strcr = 0, stcr, srcr, scr, mask;
 	int wm;
+	int s16_slots = 16; /* there are 16 slots/frame */
 	printk(KERN_INFO "*** %s\n", __func__);
 	ssi_private->dai_fmt = fmt;
 
@@ -951,11 +963,11 @@ static int _fsl_ssi_set_dai_fmt(struct device *dev,
 	// Set to 16 slots/frame
 	regmap_update_bits(regs, CCSR_SSI_STCCR,
 			   CCSR_SSI_SxCCR_DC_MASK,
-			   CCSR_SSI_SxCCR_DC(16));
+			   CCSR_SSI_SxCCR_DC(s16_slots));
 	
 	regmap_update_bits(regs, CCSR_SSI_SRCCR,
 			   CCSR_SSI_SxCCR_DC_MASK,
-			   CCSR_SSI_SxCCR_DC(16));
+			   CCSR_SSI_SxCCR_DC(s16_slots));
 	
 
 	/* DAI clock inversion */
@@ -1089,6 +1101,7 @@ static int fsl_ssi_set_dai_tdm_slot(struct snd_soc_dai *cpu_dai, u32 tx_mask,
 	regmap_update_bits(regs, CCSR_SSI_SCR, CCSR_SSI_SCR_SSIEN,
 			CCSR_SSI_SCR_SSIEN);
 
+	printk(KERN_INFO "***--- %s setting tx & rx mask\n", __func__);
 	regmap_write(regs, CCSR_SSI_STMSK, ~tx_mask);
 	regmap_write(regs, CCSR_SSI_SRMSK, ~rx_mask);
 
@@ -1176,14 +1189,14 @@ static struct snd_soc_dai_driver fsl_ssi_dai_template = {
 	.probe = fsl_ssi_dai_probe,
 	.playback = {
 		.stream_name = "CPU-Playback",
-		.channels_min = 1,
+		.channels_min = 2,
 		.channels_max = 16,
 		.rates = FSLSSI_I2S_RATES,
 		.formats = FSLSSI_I2S_FORMATS,
 	},
 	.capture = {
 		.stream_name = "CPU-Capture",
-		.channels_min = 1,
+		.channels_min = 2,
 		.channels_max = 16,
 		.rates = FSLSSI_I2S_RATES,
 		.formats = FSLSSI_I2S_FORMATS,
