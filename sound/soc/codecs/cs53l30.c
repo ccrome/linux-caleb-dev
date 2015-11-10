@@ -20,9 +20,9 @@
 struct cs53l30_priv {
 	struct snd_soc_codec *codec;
 	struct regmap *regmap;
+	int tdm_offset;
 };
 
-// read only registers are 0x01, 0x02, 0x05, 0x36
 static const struct reg_default cs53l30_reg[] = {
 	{ 0x01, 0x93 }, { 0x02, 0xa3 }, { 0x03, 0x00 },	{ 0x05, 0x00 },
 	{ 0x06, 0x10 }, { 0x07, 0x04 },	{ 0x08, 0x1c },	{ 0x0a, 0xf4 },
@@ -52,7 +52,7 @@ static int cs53l30_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_soc_dai *dai)
 {
 	struct snd_soc_codec *codec = dai->codec;
-	struct cs53l30_priv *cs53l30 = snd_soc_codec_get_drvdata(codec);
+	/*struct cs53l30_priv *cs53l30 = snd_soc_codec_get_drvdata(codec);*/
 	/*
 	 * valid rates are 16k and 48k
 	 */
@@ -82,25 +82,42 @@ static int cs53l30_init(struct snd_soc_codec *codec)
 	 *   LRCK             16.000 48.000
 	 *   MCLK/LRCK RATIO  768    256
 	 */
-	//struct cs53l301_priv *cs53l30 = snd_soc_codec_get_drvdata(codec);
+	struct cs53l30_priv *cs53l30 = snd_soc_codec_get_drvdata(codec);
+	int i;
+	unsigned long long int slots = 0xFF;
+	slots = slots << (cs53l30->tdm_offset / 8);
 	printk(KERN_INFO "*** %s\n", __func__);
-	// follow data sheet
-	ret = snd_soc_write(codec, 0x06, 0x50); // 5. power down the device.
+	/* follow data sheet*/
+	ret = snd_soc_write(codec, 0x06, 0x50); /* 5. power down the device.*/
 	printk(KERN_INFO "*** %s: snd_soc_write returned %d\n", __func__, ret);
-	snd_soc_write(codec, 0x07, 0x04); // 6.
-	snd_soc_write(codec, 0x0C, (1<<7) | (0xc<<0)); // Configure as master
+	snd_soc_write(codec, 0x07, 0x04); /* 6.*/
+	/* if (cs53l30->tdm_offset < 6) {
+	 * snd_soc_write(codec, 0x0C, (1<<7) | (0xc<<0)); // Configure as master
+	 * } else { */
+	snd_soc_write(codec, 0x0C, (0<<7) | (0xc<<0)); // Configure as slave
 	snd_soc_write(codec, 0x0D, (0<<7) ); // Set TDM mode
-	snd_soc_write(codec, 0x0E, 0x00); // Channel 1 beginst at (8-bit) slot 0
-	snd_soc_write(codec, 0x0F, 0x02); // Channel 2 begins at slot 2
-	snd_soc_write(codec, 0x10, 0x04); // Channel 3 begins at slot 4
-	snd_soc_write(codec, 0x11, 0x06); // Channel 4 begins at slot 6
+	snd_soc_write(codec, 0x0E, 0x00+(cs53l30->tdm_offset/8)); // Channel 1 beginst at (8-bit) slot 0
+	snd_soc_write(codec, 0x0F, 0x02+(cs53l30->tdm_offset/8)); // Channel 2 begins at slot 2
+	snd_soc_write(codec, 0x10, 0x04+(cs53l30->tdm_offset/8)); // Channel 3 begins at slot 4
+	snd_soc_write(codec, 0x11, 0x06+(cs53l30->tdm_offset/8)); // Channel 4 begins at slot 6
 
-	snd_soc_write(codec, 0x12, 0x00); //  enabled 8-bit slots 47:40
-	snd_soc_write(codec, 0x13, 0x00); //  enabled 8-bit slots 39:32
-	snd_soc_write(codec, 0x14, 0x00); //  enabled 8-bit slots 31:24
-	snd_soc_write(codec, 0x15, 0x00); //  enabled 8-bit slots 23:16
-	snd_soc_write(codec, 0x16, 0x00); //  enabled 8-bit slots 15:08
-	snd_soc_write(codec, 0x17, 0xff); //  enabled 8-bit slots 07:00  -- only 8 slots enabled (4 16-bit channels)
+	snd_soc_write(codec, 0x12, (unsigned char)((slots & 0x00FF0000000000) >> 40)); //  enabled 8-bit slots 47:40
+	snd_soc_write(codec, 0x13, (unsigned char)((slots & 0x0000FF00000000) >> 32)); //  enabled 8-bit slots 39:32
+	snd_soc_write(codec, 0x14, (unsigned char)((slots & 0x000000FF000000) >> 24)); //  enabled 8-bit slots 31:24
+	snd_soc_write(codec, 0x15, (unsigned char)((slots & 0x00000000FF0000) >> 16)); //  enabled 8-bit slots 23:16
+	snd_soc_write(codec, 0x16, (unsigned char)((slots & 0x0000000000FF00) >>  8)); //  enabled 8-bit slots 15:08
+	snd_soc_write(codec, 0x17, (unsigned char)((slots & 0x000000000000FF) >>  0)); //  enabled 8-bit slots 07:00  -- only 8 slots enabled (4 16-bit channels)
+
+
+	for (i = 0; i < 4; i++) {
+		/*
+		 * set ADC premap and PGA gains...
+		 *                             PREAMP   PGA_VOL
+		 */
+		snd_soc_write(codec, i + 0x29, (1<<6) | (0 << 0));
+	}
+	/* turn on mic bias */
+	snd_soc_write(codec, 0x0a, (0x0 << 4) | (1<<2) | (2<<0));
 
 	snd_soc_write(codec, 0x18, (1<<6)); // power down SDOUT2.  not needed
 	snd_soc_write(codec, 0x1B, 0x00); // LRCK is 1 bit wide
@@ -156,16 +173,16 @@ static struct snd_soc_dai_driver cs53l30_dai = {
 	.name = "cs53l30-hifi",
 	.capture = {
 		.stream_name = "Capture",
-		.channels_min = 1,
+		.channels_min = 4,
 		.channels_max = 16,
-		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_16000,
+		.rates = SNDRV_PCM_RATE_16000,
 		.formats =SNDRV_PCM_FMTBIT_S16_LE,
 	},
 	.playback = {
-		.stream_name = "Capture",
-		.channels_min = 1,
-		.channels_max = 16,
-		.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_16000,
+		.stream_name = "Playback",
+		.channels_min = 0,
+		.channels_max = 0,
+		.rates = SNDRV_PCM_RATE_16000,
 		.formats =SNDRV_PCM_FMTBIT_S16_LE,
 	},
 	.ops = &cs53l30_dai_ops,
@@ -217,7 +234,15 @@ static int cs53l30_i2c_probe(struct i2c_client *i2c,
 	} else {
 		printk(KERN_INFO "*** %s didn't get reset-gpio\n", __func__);
 	}
-	
+	if (of_property_read_u32(np, "tdm-offset", &cs53l30->tdm_offset)) {
+		printk("You'll want to be settin' a tdm-offset parameter in your cs53l30 device node\n");
+		return -EINVAL;
+	}
+	if ((cs53l30->tdm_offset & 0x7) != 0) {
+		printk(KERN_INFO "Your tdm offset must be a multiple of 8");
+		return -EINVAL;
+	}
+
 	i2c_set_clientdata(i2c, cs53l30);
 	ret = snd_soc_register_codec(&i2c->dev,
 			&soc_codec_dev_cs53l30, &cs53l30_dai, 1);
