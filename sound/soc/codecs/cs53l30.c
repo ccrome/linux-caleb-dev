@@ -108,14 +108,14 @@ static int cs53l30_init(struct snd_soc_codec *codec)
 	snd_soc_write(codec, 0x16, (unsigned char)((slots & 0x0000000000FF00) >>  8)); //  enabled 8-bit slots 15:08
 	snd_soc_write(codec, 0x17, (unsigned char)((slots & 0x000000000000FF) >>  0)); //  enabled 8-bit slots 07:00  -- only 8 slots enabled (4 16-bit channels)
 
+	snd_soc_update_bits(codec, 0x0c, (1<<4), (1<<4)); /* SCLK_INV */
+	snd_soc_update_bits(codec, 0x0d, (1<<4), (1<<4)); /* SHIFT_LEFT */
+	/* adc preamp & PGA */
+	snd_soc_write(codec, 0x29, (1<<6) | (0 << 0));
+	snd_soc_write(codec, 0x2a, (1<<6) | (0 << 0));
+	snd_soc_write(codec, 0x31, (1<<6) | (0 << 0));
+	snd_soc_write(codec, 0x32, (1<<6) | (0 << 0));
 
-	for (i = 0; i < 4; i++) {
-		/*
-		 * set ADC premap and PGA gains...
-		 *                             PREAMP   PGA_VOL
-		 */
-		snd_soc_write(codec, i + 0x29, (1<<6) | (0 << 0));
-	}
 	/* turn on mic bias */
 	snd_soc_write(codec, 0x0a, (0x0 << 4) | (1<<2) | (2<<0));
 
