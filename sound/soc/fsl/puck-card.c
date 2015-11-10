@@ -132,7 +132,7 @@ static int se_puck_probe(struct platform_device *pdev)
 	data->dai.cpu_of_node = ssi_np;
 	data->dai.platform_of_node = ssi_np;
 	data->dai.init = &se_puck_dai_init;
-	data->dai.dai_fmt = SND_SOC_DAIFMT_DSP_A | SND_SOC_DAIFMT_NB_NF |
+	data->dai.dai_fmt = SND_SOC_DAIFMT_DSP_B | SND_SOC_DAIFMT_IB_IF |
 			    SND_SOC_DAIFMT_CBM_CFM;
 
 	data->card.dev = &pdev->dev;
