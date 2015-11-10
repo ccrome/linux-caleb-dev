@@ -83,7 +83,6 @@ static int cs53l30_init(struct snd_soc_codec *codec)
 	 *   MCLK/LRCK RATIO  768    256
 	 */
 	struct cs53l30_priv *cs53l30 = snd_soc_codec_get_drvdata(codec);
-	int i;
 	unsigned long long int slots = 0xFF;
 	slots = slots << (cs53l30->tdm_offset / 8);
 	printk(KERN_INFO "*** %s\n", __func__);
@@ -173,8 +172,8 @@ static struct snd_soc_dai_driver cs53l30_dai = {
 	.name = "cs53l30-hifi",
 	.capture = {
 		.stream_name = "Capture",
-		.channels_min = 4,
-		.channels_max = 16,
+		.channels_min = 1,
+		.channels_max = 4,
 		.rates = SNDRV_PCM_RATE_16000,
 		.formats =SNDRV_PCM_FMTBIT_S16_LE,
 	},
