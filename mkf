@@ -17,7 +17,7 @@ zCopy:
 zImage: arch/arm/boot/zImage
 
 dtbsCopy: dtbs
-	scp arch/arm/boot/dts/*.dtb root@$(WAND):/boot/dtbs/$(VERSION)$(LOCALVERSION)
+	scp arch/arm/boot/dts/imx6*wand*.dtb root@$(WAND):/boot/dtbs/$(VERSION)$(LOCALVERSION)
 
 modulesCopy:
 	scp /home/caleb/linux/modules/lib/modules/$(VERSION)$(LVERSION)$(LOCALVERSION).tar.gz root@$(WAND):/lib/modules
