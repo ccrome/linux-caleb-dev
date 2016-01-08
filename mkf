@@ -1,0 +1,35 @@
+WAND=192.168.0.13
+VERSION=4.4
+LVERSION=.0-rc8
+LOCALVERSION=-armv7-x3
+CROSS_COMPILE=/home/caleb/linux/wantboard/armv7-multiplatform-latest/dl/gcc-linaro-5.2-2015.11-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
+
+.PHONY: zImage modules dtbs arch/arm/boot/zImage
+all:
+
+reboot:
+	ssh root@$(WAND) sync
+	ssh root@$(WAND) reboot
+
+zCopy:
+	scp arch/arm/boot/zImage root@$(WAND):/boot/vmlinuz-$(VERSION)$(LOCALVERSION)
+
+zImage: arch/arm/boot/zImage
+
+dtbsCopy: dtbs
+	scp arch/arm/boot/dts/*.dtb root@$(WAND):/boot/dtbs/$(VERSION)$(LOCALVERSION)
+
+modulesCopy:
+	scp /home/caleb/linux/modules/lib/modules/$(VERSION)$(LVERSION)$(LOCALVERSION).tar.gz root@$(WAND):/lib/modules
+	ssh root@$(WAND) "cd /lib/modules; tar zxf $(VERSION)$(LVERSION)$(LOCALVERSION).tar.gz"
+
+modules:
+	make -j10 ARCH=arm LOCALVERSION=$(LOCALVERSION) CROSS_COMPILE=$(CROSS_COMPILE) modules
+	make -j10 ARCH=arm LOCALVERSION=$(LOCALVERSION) CROSS_COMPILE=$(CROSS_COMPILE) modules_install
+	cd /home/caleb/linux/modules/lib/modules/; tar zcf $(VERSION)$(LVERSION)$(LOCALVERSION).tar.gz $(VERSION)$(LVERSION)$(LOCALVERSION)
+
+arch/arm/boot/zImage:
+	make -j10 ARCH=arm LOCALVERSION=$(LOCALVERSION) CROSS_COMPILE=$(CROSS_COMPILE) zImage
+
+dtbs:
+	make dtbs
