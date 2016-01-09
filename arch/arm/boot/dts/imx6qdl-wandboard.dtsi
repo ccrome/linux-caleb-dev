@@ -122,7 +122,7 @@
              sound2_ssi: simple-audio-card,cpu {
                  sound-dai = <&ssi3>;
                  system-clock-frequency = <1536000>;
-                 dai-tdm-slot-num = <2>;
+                 dai-tdm-slot-num = <8>;
                  dai-tdm-slot-width = <16>;
              };
              sound2codec: simple-audio-card,codec {
