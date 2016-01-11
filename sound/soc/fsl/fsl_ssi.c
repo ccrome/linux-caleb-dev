@@ -366,6 +366,40 @@ static irqreturn_t fsl_ssi_isr(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+// empty fifo:  must be called when the unit is ENABLED!
+// otherwise it will not be able to empty the fifos.
+static u32 fsl_empty_fifo(struct device *dev, struct regmap *regs, int is_rx, int dual_fifo)
+{
+	u32 val;
+	u32 sisr;
+	u32 err = 0;
+	int limit = 100;
+	if (is_rx) {
+		do {
+			regmap_read(regs, CCSR_SSI_SRX0, &val);
+			regmap_read(regs, CCSR_SSI_SISR, &sisr);
+		} while ((limit-- >=0) && (sisr & CCSR_SSI_SISR_RDR0));
+		if (limit <= 0)  {
+			dev_err(dev, "Couldn't empty out the RX "
+				"FIFO 0.  SISR = 0x%08x\n", sisr);
+			err = 1;
+		}
+		if (dual_fifo) {
+			do {
+				regmap_read(regs, CCSR_SSI_SRX1, &val);
+				regmap_read(regs, CCSR_SSI_SISR, &sisr);
+			} while ((limit-- >=0) &&
+				 (sisr & CCSR_SSI_SISR_RDR1));
+			if (limit <= 0)  {
+				dev_err(dev, "Couldn't empty out the RX "
+					"FIFO 1.  SISR = 0x%08x\n", sisr);
+				err = 1;
+			}
+		}
+	}
+	return err;
+}
+
 /*
  * Enable/Disable all rx/tx config flags at once.
  */
@@ -428,6 +462,7 @@ static void fsl_ssi_config(struct fsl_ssi_private *ssi_private, bool enable,
 	u32 scr_val;
 	int keep_active;
 
+	int is_rx = vals->scr & CCSR_SSI_SCR_RE;
 	regmap_read(regs, CCSR_SSI_SCR, &scr_val);
 
 	nr_active_streams = !!(scr_val & CCSR_SSI_SCR_TE) +
@@ -478,13 +513,7 @@ static void fsl_ssi_config(struct fsl_ssi_private *ssi_private, bool enable,
 		 * Note: The SOR is not documented in recent IMX datasheet, but
 		 * is described in IMX51 reference manual at section 56.3.3.15.
 		 */
-		if (vals->scr & CCSR_SSI_SCR_RE) {
-			regmap_update_bits(regs, CCSR_SSI_SOR,
-				CCSR_SSI_SOR_RX_CLR, CCSR_SSI_SOR_RX_CLR);
-		} else {
-			regmap_update_bits(regs, CCSR_SSI_SOR,
-				CCSR_SSI_SOR_TX_CLR, CCSR_SSI_SOR_TX_CLR);
-		}
+		fsl_empty_fifo(ssi_private->dev, regs, is_rx, ssi_private->use_dual_fifo);
 
 		regmap_update_bits(regs, CCSR_SSI_SRCR, vals->srcr, vals->srcr);
 		regmap_update_bits(regs, CCSR_SSI_STCR, vals->stcr, vals->stcr);
@@ -502,6 +531,7 @@ static void fsl_ssi_config(struct fsl_ssi_private *ssi_private, bool enable,
 		 * disabled now. Otherwise we could alter flags of the other
 		 * stream
 		 */
+		fsl_empty_fifo(ssi_private->dev, regs, is_rx, ssi_private->use_dual_fifo);
 
 		/* These assignments are simply vals without bits set in avals*/
 		sier = fsl_ssi_disable_val(vals->sier, avals->sier,
