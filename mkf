@@ -33,3 +33,9 @@ arch/arm/boot/zImage:
 
 dtbs:
 	make dtbs
+
+kernelversion:
+	make ARCH=arm LOCALVERSION=$(LOCALVERSION) CROSS_COMPILE=$(CROSS_COMPILE) kernelversion
+
+menuconfig:
+	make ARCH=arm LOCALVERSION=$(LOCALVERSION) CROSS_COMPILE=$(CROSS_COMPILE) menuconfig
