@@ -61,6 +61,16 @@ Optional properties:
 - fsl,mode:         The operating mode for the AC97 interface only.
                     "ac97-slave" - AC97 mode, SSI is clock slave
                     "ac97-master" - AC97 mode, SSI is clock master
+- fsl,fifo-watermark: Sets the fifo watermark.  The default is
+                    fifo_depth-2 words, meaning 'initiate dma transfer
+                    when 2 words are left in the fifo'.  At higher
+                    data rates (48kHz, 16-channels for example), this
+                    causes silent but deadly DMA xruns and channel
+                    slips.  For 15 word FIFOs (like on MX5, MX6) 8 is
+                    a good value when running at high data rates
+- fsl,dma-maxburst: sets the max number of words to transfer in DMA.
+                    This defaults to the same value as
+                    fsl,fifo-watermark.
 
 Child 'codec' node required properties:
 - compatible:       Compatible list, contains the name of the codec
