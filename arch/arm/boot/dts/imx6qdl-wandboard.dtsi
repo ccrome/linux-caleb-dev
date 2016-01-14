@@ -98,8 +98,8 @@
      assigned-clocks = <&clks IMX6QDL_CLK_SSI3_SEL>, <&clks IMX6QDL_CLK_SSI3>;
      assigned-clock-parents = <&clks IMX6QDL_CLK_PLL4_AUDIO_DIV>;
      assigned-clock-rates = <0>, <49152000>;
-     fsl,fifo-watermark = <8>;
-     fsl,dma-maxburst = <8>;
+     fsl,fifo-watermark = <4>;
+     fsl,dma-maxburst = <4>;
 };
 
 
