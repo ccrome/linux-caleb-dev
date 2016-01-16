@@ -76,14 +76,6 @@ static int se_chessmen_dai_init(struct snd_soc_pcm_runtime *rtd)
 	return 0;
 }
 
-static const struct snd_soc_dapm_widget se_chessmen_dapm_widgets[] = {
-	SND_SOC_DAPM_MIC("Mic Jack", NULL),
-	SND_SOC_DAPM_LINE("Line In Jack", NULL),
-	SND_SOC_DAPM_HP("Headphone Jack", NULL),
-	SND_SOC_DAPM_SPK("Line Out Jack", NULL),
-	SND_SOC_DAPM_SPK("Ext Spk", NULL),
-};
-
 static struct snd_soc_codec_conf codec_confs[NUM_CODECS] = {
 	{ .name_prefix = "a", },
 	{ .name_prefix = "b", },
@@ -104,7 +96,7 @@ static int se_chessmen_probe(struct platform_device *pdev)
 	for (i = 0; i < NUM_CODECS; i++) {
 		codecs_np[i] = of_parse_phandle(pdev->dev.of_node, "audio-codec", i); 
 		if (!codecs_np[i]) {
-			dev_err(&pdev->dev, "phandle missing or invalid.  you must include 4 AIC3x codecs in your 'audio-codec' spec.\n");
+			dev_err(&pdev->dev, "phandle missing or invalid.  you must include %d AIC3x codecs in your 'audio-codec' spec.\n", NUM_CODECS);
 			ret = -EINVAL;
 			goto fail;
 		}
@@ -152,6 +144,11 @@ static int se_chessmen_probe(struct platform_device *pdev)
 	if (ret)
 		goto fail;
 	printk(KERN_INFO "*** %s 6\n", __func__);
+
+	ret = snd_soc_of_parse_audio_simple_widgets(&data->card, "widgets");
+	if (ret)
+		goto fail;
+
 	ret = snd_soc_of_parse_audio_routing(&data->card, "audio-routing");
 	if (ret)
 		goto fail;
@@ -171,8 +168,6 @@ static int se_chessmen_probe(struct platform_device *pdev)
 	data->card.num_links = 1;
 	data->card.owner = THIS_MODULE;
 	data->card.dai_link = &data->dai;
-	data->card.dapm_widgets = se_chessmen_dapm_widgets;
-	data->card.num_dapm_widgets = ARRAY_SIZE(se_chessmen_dapm_widgets);
 
 	platform_set_drvdata(pdev, &data->card);
 	snd_soc_card_set_drvdata(&data->card, data);

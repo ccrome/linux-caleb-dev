@@ -109,11 +109,47 @@
   	  audio-codec = <&aic_a &aic_b &aic_c &aic_d>;
 	  model = "chessmen-board";
 	  ssi-controller = <&ssi3>;
-	  audio-routing =
-		"MIC_IN", "Mic Jack",
-		"Mic Jack", "Mic Bias",
-		"Headphone Jack", "HP_OUT";
-     };
+	  widgets =
+		"Line", "Line In 0",
+		"Line", "Line In 1",
+		"Line", "Line In 2",
+		"Line", "Line In 3",
+		"Line", "Line In 4",
+		"Line", "Line In 5",
+		"Line", "Line In 6",
+		"Line", "Line In 7",
+		"Line", "Line Out 0",
+		"Line", "Line Out 1",
+		"Line", "Line Out 2",
+		"Line", "Line Out 3",
+		"Line", "Line Out 4",
+		"Line", "Line Out 5",
+		"Line", "Line Out 6",
+		"Line", "Line Out 7",
+		"Headphone", "Headphone Jack";
+
+	audio-routing =
+		"a LINE1L", "Line In 0",
+		"a LINE1R", "Line In 1",
+		"b LINE1L", "Line In 2",
+		"b LINE1R", "Line In 3",
+		"c LINE1L", "Line In 4",
+		"c LINE1R", "Line In 5",
+		"d LINE1L", "Line In 6",
+		"d LINE1R", "Line In 7",
+		"Line Out 0", "a LLOUT",
+		"Line Out 1", "a RLOUT",
+		"Line Out 2", "b LLOUT",
+		"Line Out 3", "b RLOUT",
+		"Line Out 4", "c LLOUT",
+		"Line Out 5", "c RLOUT",
+		"Line Out 6", "d LLOUT",
+		"Line Out 7", "d RLOUT",
+		"Headphone Jack", "a HPLOUT",
+		"Headphone Jack", "a HPROUT",
+		"Headphone Jack", "a HPLCOM",
+		"Headphone Jack", "a HPRCOM";
+	};
 };
 
 &i2c1 {
