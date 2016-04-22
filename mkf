@@ -1,9 +1,10 @@
-WAND=192.168.0.13
-VERSION=4.4
-LVERSION=.0-rc8
-LOCALVERSION=-armv7-x3
-CROSS_COMPILE=/home/caleb/linux/wantboard/armv7-multiplatform-latest/dl/gcc-linaro-5.2-2015.11-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
-
+# /home/caleb/linux/modules/lib/modules/4.5.0-00016-gbeb7959/
+WAND=192.168.0.229
+VERSION=4.5
+LVERSION=.0
+LOCALVERSION=
+CROSS_COMPILE=/home/caleb/linux/gcc-linaro-5.3-2016.02-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
+INSTALL_MOD_DIR=/home/caleb/linux/modules
 .PHONY: zImage modules dtbs arch/arm/boot/zImage
 all:
 
@@ -12,24 +13,30 @@ reboot:
 	ssh root@$(WAND) reboot
 
 zCopy:
-	scp arch/arm/boot/zImage root@$(WAND):/boot/vmlinuz-$(VERSION)$(LOCALVERSION)
+	scp arch/arm/boot/zImage root@$(WAND):/boot/boot/zImage
 
 zImage: arch/arm/boot/zImage
 
 dtbsCopy: dtbs
-	scp arch/arm/boot/dts/imx6*wand*.dtb root@$(WAND):/boot/dtbs/$(VERSION)$(LOCALVERSION)
+	scp arch/arm/boot/dts/imx6*wand*.dtb root@$(WAND):/boot/boot
 
 modulesCopy:
 	scp /home/caleb/linux/modules/lib/modules/$(VERSION)$(LVERSION)$(LOCALVERSION).tar.gz root@$(WAND):/lib/modules
 	ssh root@$(WAND) "cd /lib/modules; tar zxf $(VERSION)$(LVERSION)$(LOCALVERSION).tar.gz"
 
+kernelversion:
+	ARCH=arm LOCALVERSION=$(LOCALVERSION) CROSS_COMPILE=$(CROSS_COMPILE) make -j10 kernelversion
+
+menuconfig:
+	ARCH=arm LOCALVERSION=$(LOCALVERSION) CROSS_COMPILE=$(CROSS_COMPILE) make -j10 menuconfig
+
 modules:
-	make -j10 ARCH=arm LOCALVERSION=$(LOCALVERSION) CROSS_COMPILE=$(CROSS_COMPILE) modules
-	make -j10 ARCH=arm LOCALVERSION=$(LOCALVERSION) CROSS_COMPILE=$(CROSS_COMPILE) modules_install
+	ARCH=arm LOCALVERSION=$(LOCALVERSION) CROSS_COMPILE=$(CROSS_COMPILE) make -j10 modules
+	INSTALL_MOD_PATH=$(INSTALL_MOD_DIR) ARCH=arm LOCALVERSION=$(LOCALVERSION) CROSS_COMPILE=$(CROSS_COMPILE) make -j10 modules_install
 	cd /home/caleb/linux/modules/lib/modules/; tar zcf $(VERSION)$(LVERSION)$(LOCALVERSION).tar.gz $(VERSION)$(LVERSION)$(LOCALVERSION)
 
 arch/arm/boot/zImage:
-	make -j10 ARCH=arm LOCALVERSION=$(LOCALVERSION) CROSS_COMPILE=$(CROSS_COMPILE) zImage
+	ARCH=arm LOCALVERSION=$(LOCALVERSION) CROSS_COMPILE=$(CROSS_COMPILE) make -j10 zImage
 
 dtbs:
 	make dtbs
