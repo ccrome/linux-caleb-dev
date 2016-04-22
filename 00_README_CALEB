@@ -1,0 +1,38 @@
+This is a linux 4.5 kernel tree that runs a dummy loopback SSI driver
+on the wandboard (and probably other boards too!)
+
+This tree has modifications to the SSI port by Caleb Crome and Arnaud
+Mouchie. We'll work on getting these mods into the linux mainline
+eventually.  
+
+To make you do:
+
+you can use the file 'mkf' here for making things:
+
+Here's how to get started:
+
+ARCH=arm
+CROSS_COMPILE=/home/caleb/linux/gcc-linaro-5.3-2016.02-x86_64_arm-linux-gnueabihf/bin/arm-linux-gnueabihf-
+make imx_v6_v7_defconfig
+
+the mkf file assumes you're running the wandboard ubuntu 15.10 release
+from here:
+http://www.wandboard.org/images/downloads/ubuntu-15.10-lxde-wandboard-20151106.zip
+
+Edit the mkf file to your needs
+
+Then you can do
+# make -f mkf menuconfig
+to configure things.  Almost nothing is required I think
+
+# make -f mkf zImage modules dtbs
+# make -f mkf zCopy modulesCopy dtbsCopy
+
+When you modify the kernel, you can just do whichever of the above
+things you need, like 
+   # make -f mkf zImage zCopy reboot 
+To make a new kernel and copy it over and reboot all in one go.
+
+
+
+
