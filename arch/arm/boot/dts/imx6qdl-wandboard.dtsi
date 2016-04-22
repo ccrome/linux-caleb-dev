@@ -109,7 +109,7 @@
 
      sound@2 {
          compatible = "simple-audio-card";
-         simple-audio-card,name = "test";
+         simple-audio-card,name = "loopback-ssi-test";
          simple-audio-card,format="dsp_a";
 
 #ifdef SSI_TEST_MASTER
